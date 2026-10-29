@@ -1,0 +1,889 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CPQ Quest</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Unbounded:wght@500;800&display=swap">
+<style>
+/* Layout concept: a night-shift deal room. A route map of five stages, each a different mechanic: arcade, sequence, code review, boss fight, timed gauntlet. Tickets are pale paper on a dark floor; cyan is the interactive color, amber is money, pink is rejection. */
+:root{
+  color-scheme:dark;
+  --bg:#0A0F1F; --panel:#131C3A; --panel2:#1A2548; --line:#2A3866; --ink:#EAF0FF; --muted:#9AA8D0;
+  --cyan:#46E0FF; --cyan-ink:#04202A; --amber:#FFB52E; --pink:#FF4F8B; --mint:#3DDC97;
+  --paper:#E9F0FF; --paper-ink:#0E1630; --code:#070B18;
+  --f-display:'Unbounded',system-ui,sans-serif; --f-body:'IBM Plex Sans',system-ui,sans-serif; --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{background:radial-gradient(900px 420px at 50% -8%,#1B2A63 0%,rgba(10,15,31,0) 65%),var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3,p{margin:0}
+h2,h3{font-family:var(--f-display);text-wrap:balance;letter-spacing:-0.01em}
+a{color:var(--cyan)}
+button{font:inherit;color:inherit;touch-action:manipulation}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+.k{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.tag{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--cyan)}
+
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-size:1.05rem}
+.logo svg{width:30px;height:30px;color:var(--cyan)}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:7px 14px;border-radius:999px;font-family:var(--f-mono);font-size:.78rem;cursor:pointer}
+.iconbtn:hover{border-color:var(--cyan)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.profile{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end}
+.rank{font-size:clamp(1.4rem,5vw,2rem);font-weight:800}
+.xp{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:8px}
+.xp i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--amber));border-radius:99px}
+.big{font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,5vw,2rem);color:var(--amber);font-variant-numeric:tabular-nums}
+.pr{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+
+.route{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.stage{position:relative;display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px}
+.spine{position:relative}
+.spine::after{content:"";position:absolute;left:19px;top:42px;bottom:-14px;width:2px;background:var(--line)}
+.stage:last-child .spine::after{display:none}
+.node{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;background:var(--panel);border:2px solid var(--line);color:var(--muted)}
+.stage.open .node{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 0 0 rgba(70,224,255,.5);animation:pulse 2s infinite}
+.stage.done .node{background:var(--mint);border-color:var(--mint);color:#06281A}
+.node svg{width:18px;height:18px}
+@keyframes pulse{70%{box-shadow:0 0 0 10px rgba(70,224,255,0)}100%{box-shadow:0 0 0 0 rgba(70,224,255,0)}}
+.scard{display:grid;grid-template-columns:44px minmax(0,1fr);gap:14px;text-align:left;width:100%;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px;cursor:pointer}
+.scard:hover:not(:disabled){border-color:var(--cyan);background:var(--panel2)}
+.scard:disabled{opacity:.5;cursor:not-allowed}
+.ico{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;background:var(--bg);color:var(--cyan)}
+.ico svg{width:24px;height:24px}
+.sbody{display:flex;flex-direction:column;gap:4px;min-width:0}
+.st{font-family:var(--f-display);font-weight:800;font-size:1.05rem}
+.sd{color:var(--muted);font-size:.9rem}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-family:var(--f-mono);font-size:.74rem;color:var(--muted);margin-top:4px}
+.stars{display:inline-flex;gap:2px}
+.stars svg{width:15px;height:15px;fill:var(--line)}
+.stars svg.on{fill:var(--amber)}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.bd{padding:10px 12px;border-radius:10px;border:1px solid var(--line);display:flex;flex-direction:column;gap:2px;opacity:.5}
+.bd b{font-family:var(--f-display);font-size:.8rem}
+.bd span{font-size:.78rem;color:var(--muted)}
+.bd.on{opacity:1;border-color:var(--amber);background:rgba(255,181,46,.08)}
+.bd.on b{color:var(--amber)}
+
+.hud{display:flex;flex-wrap:wrap;align-items:center;gap:10px 22px;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.hud .g{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hud .v{font-family:var(--f-mono);font-size:.95rem;font-variant-numeric:tabular-nums}
+.hud .sc{color:var(--amber)}
+.hud .quit{margin-left:auto}
+.lives{display:flex;gap:5px;padding-top:4px}
+.life{width:16px;height:16px;border-radius:4px;background:var(--cyan)}
+.life.off{background:transparent;border:2px solid var(--line)}
+
+.field{position:relative;height:340px;overflow:hidden;border:1px solid var(--line);border-radius:14px;background-color:#0C1330;
+  background-image:linear-gradient(rgba(70,224,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(70,224,255,.06) 1px,transparent 1px);background-size:34px 34px}
+.floor{position:absolute;left:0;right:0;bottom:0;height:22px;background:repeating-linear-gradient(135deg,var(--pink) 0 10px,#7A1B3F 10px 20px);display:grid;place-items:center}
+.floor span{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;background:var(--bg);padding:0 8px;color:var(--pink)}
+.ticket{position:absolute;top:0;left:0;width:31%;height:84px;padding:9px 10px;background:var(--paper);color:var(--paper-ink);border-radius:8px;border-left:6px solid #8EA2E8;display:flex;flex-direction:column;gap:3px;overflow:hidden;will-change:transform;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.ticket b{font-family:var(--f-display);font-size:.78rem;line-height:1.15}
+.ticket span{font-size:.7rem;line-height:1.25;color:#38456F;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ticket.target{outline:3px solid var(--cyan);box-shadow:0 0 22px rgba(70,224,255,.55)}
+.ticket.ok{animation:pop .3s forwards}
+.ticket.bad{animation:bad .35s forwards}
+@keyframes pop{to{opacity:0;filter:brightness(1.6)}}
+@keyframes bad{50%{border-left-color:var(--pink);box-shadow:0 0 22px rgba(255,79,139,.8)}to{opacity:0}}
+.overlay{position:absolute;inset:0;background:rgba(7,11,24,.88);display:flex;align-items:center;justify-content:center;padding:16px;z-index:5}
+.overlay .card{max-width:520px}
+.floater{position:absolute;font-family:var(--f-mono);font-weight:500;color:var(--amber);animation:rise .9s forwards;pointer-events:none;z-index:4}
+@keyframes rise{from{transform:translateY(0);opacity:1}to{transform:translateY(-40px);opacity:0}}
+.toast{min-height:2.6em;padding:8px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:.9rem;color:var(--muted)}
+.toast.good{color:var(--mint);border-color:var(--mint)}
+.toast.bad{color:var(--pink);border-color:var(--pink)}
+.bins{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.bin{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;cursor:pointer;font-size:.86rem;line-height:1.2}
+.bin:hover{background:var(--panel2)}
+.bin:active{transform:scale(.97)}
+.bin .bn{font-family:var(--f-mono);width:1.6rem;height:1.6rem;flex:none;display:grid;place-items:center;border-radius:6px;background:var(--bg);color:var(--c);font-size:.8rem}
+.bin.flash{animation:flash .6s}
+@keyframes flash{30%{background:rgba(61,220,151,.35);border-color:var(--mint)}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.q{font-family:var(--f-body);font-weight:600;font-size:clamp(1.1rem,3.3vw,1.35rem);line-height:1.35}
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{display:grid;grid-template-columns:1.9rem minmax(0,1fr);gap:12px;align-items:start;width:100%;text-align:left;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--cyan)}
+.opt .ltr{font-family:var(--f-mono);font-size:.8rem;display:grid;place-items:center;height:1.6rem;border:1px solid var(--line);border-radius:6px;color:var(--muted)}
+.opt:disabled{cursor:default}
+.opt:disabled:not(.correct):not(.wrong){opacity:.5}
+.opt.correct{border-color:var(--mint);background:rgba(61,220,151,.12)}
+.opt.correct .ltr{background:var(--mint);color:#06281A;border-color:var(--mint)}
+.opt.wrong{border-color:var(--pink);background:rgba(255,79,139,.12)}
+.opt.wrong .ltr{background:var(--pink);color:#2A0615;border-color:var(--pink)}
+.fb{padding:12px 14px;border-radius:10px;border-left:4px solid var(--muted);background:var(--bg)}
+.fb.good{border-color:var(--mint)}
+.fb.bad{border-color:var(--pink)}
+.fb strong{font-family:var(--f-display);font-size:.9rem;display:block;margin-bottom:3px}
+.fb.good strong{color:var(--mint)}
+.fb.bad strong{color:var(--pink)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row.end{justify-content:flex-end}
+.grow{flex:1}
+.btn{cursor:pointer;border:1px solid var(--cyan);background:var(--cyan);color:var(--cyan-ink);padding:10px 20px;border-radius:999px;font-weight:600}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line);font-weight:500}
+.btn.ghost:hover{border-color:var(--cyan);filter:none}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.good{border-color:var(--mint);color:var(--mint)}
+.rules{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:.95rem}
+.intro h2{font-size:clamp(1.4rem,5vw,1.9rem);font-weight:800}
+
+.timer{height:6px;border-radius:99px;background:var(--bg);overflow:hidden}
+.timer i{display:block;height:100%;background:var(--cyan);transform-origin:left;transform:scaleX(1)}
+.timer i.low{background:var(--pink)}
+.trow{display:flex;justify-content:space-between;gap:10px}
+
+.bosspanel{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr);gap:16px;align-items:center;position:relative}
+.boss{width:100%;max-width:200px;height:auto;overflow:visible}
+.bgrp{transform-box:fill-box;transform-origin:center bottom}
+.boss.hit .bgrp{animation:bhit .5s}
+.boss.lunge .bgrp{animation:blunge .55s}
+.boss.dead .bgrp{animation:bdead 1s forwards}
+@keyframes bhit{20%{transform:translateX(-8px) rotate(-4deg);filter:brightness(2)}60%{transform:translateX(6px) rotate(3deg)}}
+@keyframes blunge{40%{transform:translateY(14px) scale(1.12)}}
+@keyframes bdead{to{transform:translateY(40px) rotate(24deg) scale(.7);opacity:0}}
+.hp{height:16px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.hp i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--amber));transition:width .45s}
+.dmg{position:absolute;left:30px;top:6px;font-family:var(--f-display);font-weight:800;font-size:1.6rem;color:var(--amber);animation:rise 1s forwards}
+.dmg.crit{color:var(--pink)}
+.shake{animation:shk .4s}
+@keyframes shk{20%{transform:translateX(-6px)}60%{transform:translateX(6px)}}
+
+.build{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.pipe{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.pn{display:grid;grid-template-columns:2rem minmax(0,1fr);gap:10px;align-items:center;padding:7px 10px;border-radius:10px;border:1px dashed var(--line);color:var(--muted);font-size:.88rem;position:relative}
+.pn .pdot{font-family:var(--f-mono);width:1.7rem;height:1.7rem;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);font-size:.75rem}
+.pn.on{border:1px solid var(--cyan);color:var(--ink);background:rgba(70,224,255,.08);animation:glow .8s}
+.pn.on .pdot{background:var(--cyan);color:var(--cyan-ink);border-color:var(--cyan)}
+@keyframes glow{from{box-shadow:0 0 18px rgba(70,224,255,.8)}to{box-shadow:0 0 0 rgba(70,224,255,0)}}
+.pool{display:flex;flex-direction:column;gap:8px;align-content:start}
+.chipbtn{width:100%;text-align:left;padding:10px 14px;background:var(--bg);border:1px solid var(--line);border-radius:10px;cursor:pointer;font-size:.9rem}
+.chipbtn:hover{border-color:var(--cyan)}
+.chipbtn.hint{border-color:var(--amber);background:rgba(255,181,46,.1)}
+.chipbtn.shake{border-color:var(--pink)}
+.stamp{align-self:center;font-family:var(--f-display);font-weight:800;font-size:1.4rem;letter-spacing:.08em;color:var(--mint);border:4px solid var(--mint);padding:6px 18px;border-radius:8px;transform:rotate(-6deg);animation:stampin .5s}
+@keyframes stampin{from{transform:rotate(-6deg) scale(2.2);opacity:0}to{transform:rotate(-6deg) scale(1);opacity:1}}
+
+.code{background:var(--code);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+.codein{width:max-content;min-width:100%;padding:6px 0}
+.cl{display:flex;gap:12px;width:100%;text-align:left;padding:4px 14px 4px 10px;background:none;border:0;border-left:3px solid transparent;cursor:pointer;font-family:var(--f-mono);font-size:.82rem}
+.cl:hover:not(:disabled){background:rgba(70,224,255,.1);border-left-color:var(--cyan)}
+.cl:disabled{cursor:default}
+.cl .ln{color:#4F5E92;width:1.4rem;text-align:right;flex:none}
+.cl code{white-space:pre;font-family:inherit}
+.cl.cmt code{color:#6F7FB5}
+.cl.flag{background:rgba(255,79,139,.18);border-left-color:var(--pink)}
+.cl.wrong{background:rgba(255,181,46,.14);border-left-color:var(--amber)}
+.ctx{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+
+.endt{font-size:clamp(1.5rem,5vw,2.2rem);font-weight:800}
+.big-stars{display:flex;gap:6px}
+.big-stars svg{width:34px;height:34px;fill:var(--line)}
+.big-stars svg.on{fill:var(--amber);filter:drop-shadow(0 0 8px rgba(255,181,46,.6))}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{padding:12px;background:var(--bg);border-radius:10px;display:flex;flex-direction:column;gap:2px}
+.stat .v{font-family:var(--f-display);font-weight:800;font-size:1.15rem;font-variant-numeric:tabular-nums}
+.list{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+.list li span{color:var(--mint)}
+.newb{padding:10px 14px;border-radius:10px;border:1px solid var(--amber);background:rgba(255,181,46,.1);color:var(--amber);font-size:.9rem}
+.cert{border:2px solid var(--amber);border-radius:14px;padding:22px 18px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;background:linear-gradient(160deg,rgba(255,181,46,.1),transparent)}
+.cert h3{font-size:1.15rem;color:var(--amber)}
+.cert .nm{font-family:var(--f-display);font-weight:800;font-size:clamp(1.3rem,5vw,1.9rem);min-height:1.3em;word-break:break-word}
+.nameinput{background:var(--bg);border:1px solid var(--line);border-radius:999px;color:var(--ink);padding:12px 18px;font:inherit;font-size:1.05rem;width:100%;max-width:420px}
+.linkbtn{background:none;border:0;padding:0;color:var(--cyan);font:inherit;text-transform:none;letter-spacing:0;text-decoration:underline;cursor:pointer}
+.scol{display:flex;flex-direction:column;gap:8px;min-width:0}
+.btn.small{padding:7px 14px;font-size:.82rem;align-self:flex-start;text-align:left;border-color:var(--amber);color:var(--amber)}
+.cert label{margin-top:6px}
+.cert input{background:var(--bg);border:1px solid var(--line);border-radius:999px;color:var(--ink);padding:9px 16px;font:inherit;width:100%;max-width:320px;text-align:center}
+.foot{font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.foot button{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.8rem;align-self:flex-start}
+
+@media (max-width:720px){
+  .build{grid-template-columns:minmax(0,1fr)}
+  .build .pool{order:-1}
+  .bosspanel{grid-template-columns:minmax(0,110px) minmax(0,1fr)}
+  .profile{grid-template-columns:minmax(0,1fr)}
+  .pr{align-items:flex-start}
+  .field{height:320px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">
+      <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="10" y="3" width="12" height="7" rx="3"/><path d="M6 13h20v8H6zM5 27h22"/></svg>
+      <span>CPQ QUEST</span>
+    </div>
+    <button class="iconbtn" id="snd" type="button" data-act="mute">Sound on</button>
+  </header>
+  <main id="app"></main>
+  <footer class="foot" id="foot"></footer>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=(s)=>document.querySelector(s);
+const esc=(s)=>String(s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=(a)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const sample=(a,n)=>shuffle(a).slice(0,n);
+const fmt=(n)=>'$'+Math.round(n).toLocaleString('en-US');
+
+/* ---------- content, drawn from the Oracle CPQ help topics ---------- */
+const SECTIONS=['Commerce and Documents','Integration Platform','Products','Users','Developer Tools','General','Styles and Templates','Utilities'];
+const SEC_COL=['#46E0FF','#7C9BFF','#B48CFF','#FF7AD9','#FF8A5B','#FFC24A','#8BE36B','#3DDCC0'];
+const MODS=[
+['Process Definition','Commerce and Documents','Define the documents, attributes, actions and steps of a Commerce process.'],
+['Process Invocation','Commerce and Documents','Set rules that let a user start a Commerce process from Configuration and Parts pages.'],
+['Document Designer','Commerce and Documents','Build document templates with a drag and drop interface.'],
+['Email Designer','Commerce and Documents','Build email templates for approval and transition rule notifications.'],
+['Integration Center','Integration Platform','Manage integrations such as DocuSign eSignature, an OAuth provider and CRM.'],
+['Single Sign-On','Integration Platform','Let users log in automatically without repeated authentication.'],
+['Web Services','Integration Platform','Test SOAP calls by generating and editing inputs and endpoints.'],
+['Pricing Engine','Products','Set customer-specific pricing part by part.'],
+['Parts','Products','Maintain part numbers, serial numbers and part custom fields.'],
+['Eligibility Rules','Products','Decide which parts specific customers are allowed to buy.'],
+['Internal Users','Users','Create, modify, activate or deactivate internal users.'],
+['Partner Organizations','Users','Create partner organizations that configure and buy your products.'],
+['BML Library','Developer Tools','Create BML util library functions for use in Configuration and Commerce.'],
+['Data Tables','Developer Tools','Create, upload and modify tables that rules and functions can query.'],
+['Error Logs','Developer Tools','View the errors Oracle CPQ logged so you can debug.'],
+['Performance Logs','Developer Tools','Monitor the performance your sales users experience.'],
+['UI Designer','General','Edit ADF pages with a drag and drop editor.'],
+['General Site Options','General','Set password options, login options, exchange rates and unit conversions.'],
+['Stylesheet','Styles and Templates','Brand the site through the main CSS stylesheet.'],
+['Page Templates','Styles and Templates','Define templates for pages such as Model Configuration.'],
+['Migration','Utilities','Move admin components between Oracle CPQ sites.'],
+['Bulk Data Services','Utilities','Upload or download parts, models, rules and Data Tables in bulk.'],
+['Text Administration','Utilities','Replace the wording of strings across the site.'],
+['File Manager','Utilities','Store files and images for use across the application.']
+];
+const STEPS=[
+'Create the process and save it',
+'Add the main document and any sub-documents',
+'Create attributes, actions and views for each document',
+'Develop XSL views for Print, Email and Change History',
+'Customize process actions for the Transaction Manager',
+'Build the Transaction Manager column layout with Data Columns',
+'Design the workflow steps and their participant profiles',
+'Set up forwarding rules inside the workflow steps',
+'Create timers for automatic actions and auto-forwarding',
+'Deploy the Commerce process'
+];
+const BANK3=[
+['You built a new Commerce process and saved it, but sales users cannot see it. What is missing?','Deploying the process',['Cloning it to a second process','Enabling the Order stage','Adding a column in Data Columns'],'Commerce process tasks are administered in a pending state. A new process, or a change to one, shows on the production side only after it is deployed.'],
+['A process uses Transaction Locking. A second user opens a quote the first user is editing. What can they do?','View it but not edit it',['Edit it alongside the first user','Start a session that overrides the first user','Nothing, the quote will not open'],'With Transaction Locking, one user edits at a time. Other users can view the locked transaction but cannot edit it.'],
+['Which editing mode lets several users edit one transaction at the same time?','Collaborative Editing',['Transaction Locking','Single User','Stage Sharing'],'Collaborative Editing allows multiple users to edit a transaction at once.'],
+['In Single User mode, a second user starts a new editing session. What happens?','The new session supersedes the existing one',['They are blocked until the first user saves','Both sessions merge automatically','Their session opens read-only'],'Single User mode does not block anyone from starting a new editing session. The new one supersedes the existing session.'],
+['Which transaction stage is the default and cannot be disabled?','Quote',['Order','Agreement','Draft'],'Quote is the default stage of the transaction lifecycle and cannot be disabled. Order and Agreement are optional.'],
+['You enabled the Order stage on a Standard Process and later want it off. What applies?','It cannot be disabled once enabled',['Turn it off in the Deployment Center','Turn it off, but only before the next deploy','Only a FullAccess user can turn it off'],'Order is on automatically for a new Standard Process, and once it is enabled on a Standard Process it cannot be disabled.'],
+['Which release made the Standard Process the default for new Commerce processes?','Oracle CPQ 23B',['Oracle CPQ 18C','Oracle CPQ 20A','Oracle CPQ 24D'],'Beginning in 23B, the Standard Process is the default when you create a new Commerce process.'],
+['You cannot open Steps for a new Commerce process. What is the likely reason?','No main document exists yet',['The process is not deployed','The Order stage is off','Page Length is set too high'],'At least one main document must exist before Steps, Process Actions, Data Columns or Process Manager can be created and accessed.'],
+['You need a second Commerce process. What does the help recommend?','Clone an existing process and delete what you do not need',['Build a blank process from scratch','Export a Data Table and re-import it','Migrate the first process under a new name'],'Creating a blank process or documents from scratch is unusual. Best practice is to clone the existing one and remove everything not needed.'],
+['Where can you delete a Commerce process that is already deployed?','The Deployment Center',['The Delete button on the Processes page','Bulk Data Services','Migration logs'],'The Delete button on the Processes page is for undeployed processes. A deployed one is deleted from its Deployment Center.'],
+['Under the default large attribute limits for new sites (24D), what is the size limit for a Rich Text attribute?','32 KB',['5 MB','100 MB','1 MB'],'New sites get 32 KB limits for Rich Text, Text Area and History attributes, 100 MB for a main document and 5 MB for a sub-document.'],
+['Under those same default limits, how large can a whole sub-document be?','5 MB',['32 KB','100 MB','1 GB'],'A sub-document is limited to 5 MB. A main document can be 100 MB.'],
+['After you save a Commerce process, the Variable Name field is...','Read-only',['Editable until you deploy','Regenerated from the Process Name','Editable by FullAccess users only'],'The Variable Name can be changed before saving. After saving it is read-only.'],
+['Who can open the Admin Home Page?','FullAccess users',['Any internal user','Partner organization admins','Members of the Sales group'],'The Admin Home Page can only be accessed by FullAccess users.']
+];
+const BANK4=[
+['What does the setattributevalue BML function do?','Sets a Commerce attribute value on a main or sub-document',['Sets a Data Table column default','Changes a user group membership','Sets the priority of a rule'],'Added in Oracle CPQ 20A, setattributevalue sets a Commerce attribute value on a main document or sub-document.'],
+['Where can setattributevalue be used?','Advanced Default, Advanced Modify and Commerce library BML',['Only in Configuration rules','Only in document XSL views','Only in Data Table uploads'],'It works in Advanced Default, Advanced Modify and Commerce BML libraries (function category Others), on main and sub-documents.'],
+['What does the INSERT BMQL function do for Live Data Tables (20A)?','Adds a new record to a Live Data Table',['Adds a column to a Data Table','Creates a brand new Data Table','Copies a table to another site'],'The INSERT statement adds a new record into a Live Data Table. Delete, Update and Modify arrived in the same release.'],
+['Where do you create BML util library functions used in Configuration and Commerce?','BML Library, under Developer Tools',['Process Definition, under Steps','Integration Center','Bulk Data Services'],'BML Library in the Developer Tools section is where util library functions are created.'],
+['You need to find every BML function on the site that uses a given term. What do you use?','Global Search on BML',['Administration Logs','Performance Logs','Interface Catalogs'],'Global Search on BML searches all functions on the site. It sits in Developer Tools next to Error Logs and the BML Library.'],
+['The Performance Reviewer (25B) flags Self URLData calls. What should you do instead?','Use library invocation',['Wrap the call in a timer','Move the logic into a Data Table','Add a second URLData call as backup'],'Data calls to the same site should be avoided. Use library invocation wherever possible.'],
+['What does the Performance Reviewer advise for BMQL in Configuration Rules?','Avoid commerce.transaction and commerce.transactionLine',['Always join to commerce.transaction','Use commerce.transactionLine for every lookup','Replace BMQL with Data Columns'],'Both commerce.transaction and commerce.transactionLine in Configuration Rule BMQL are flagged as performance risks.'],
+['Which report in the CPQ Implementation Report lists Commerce scripts from actions, attributes, library functions, integrations, rules and workflow steps?','BML Scripts Report',['Attributes Report','Steps Report','Process Summary'],'The BML Scripts Report displays all Commerce process scripts. The Attributes Report covers attributes and where they are referenced, and the Steps Report covers workflow steps.'],
+['What did the 20A BML compiler optimization change?','It uses StringBuilders to speed up string building',['It caches Data Table results','It compiles BML into XSL','It runs Commerce rules in parallel'],'The compiler now uses StringBuilders in the background while processing BML functions. No steps are needed to enable it.'],
+['Dynamic BMQL variables (2015 R2) let one statement vary which parts?','Column names, table names and WHERE clauses',['Only the row limit','Only the user locale','Only the process stage'],'One BMQL statement with variables can replace several statements for each expected permutation of table, column or condition.'],
+['Which report tells you whether a Commerce attribute is referenced in BML, rules, layouts or analytics?','Attributes Report',['BML Scripts Report','Steps Report','Administration Logs'],'The Attributes Report shows each attribute and whether it is required or referenced in analytics, BML functions, data columns, layouts or rules.']
+];
+/* Illustrative sketches for the Code Review level. Not production syntax. */
+const SNIPS=[
+{ctx:'Configuration rule · advanced condition',bad:2,lines:[
+'discount = 0;',
+'tier = bmql("SELECT tier FROM accountTiers WHERE acct = $acctId");',
+'txns = bmql("SELECT quoteId FROM commerce.transaction WHERE acct = $acctId");',
+'for t in txns { discount = discount + 1; }',
+'return discount;'],
+why:'The Performance Reviewer advises against commerce.transaction in BMQL inside Configuration Rules. Querying a Data Table like accountTiers is fine.'},
+{ctx:'Configuration rule · hiding rule',bad:3,lines:[
+'// hide options that are not eligible for this family',
+'allowed = bmql("SELECT partNumber FROM eligibleParts WHERE family = $family");',
+'// count what is already in the cart',
+'lines = bmql("SELECT partNumber FROM commerce.transactionLine WHERE quoteId = $quoteId");',
+'return allowed;'],
+why:'commerce.transactionLine in BMQL inside Configuration Rules is another flagged pattern. The eligibleParts lookup is a normal Data Table query.'},
+{ctx:'Commerce action · advanced modify, after formulas',bad:2,lines:[
+'base = 0;',
+'siteUrl = "https://acme.bigmachines.com/rest/v19/commerceDocuments";',
+'resp = urldata(siteUrl);',
+'base = parseTotal(resp);',
+'return base;'],
+why:'A data call back to the same site is a Self URLData call. The help advises library invocation wherever possible.'},
+{ctx:'Sub-document · advanced modify, after formulas',bad:3,lines:[
+'discountPct = 0;',
+'// getLineContext lives in a MAIN document library',
+'// and it imports sub-document attributes',
+'ctx = getLineContext(lineId);',
+'return ctx.discount;'],
+why:'Importing a main document Commerce library function that itself imports sub-document attributes into a sub-document BML script is flagged for performance.'},
+{ctx:'Commerce action · advanced modify',bad:-1,lines:[
+'rate = bmql("SELECT rate FROM discountMatrix WHERE tier = $tier");',
+'pct = 0;',
+'for r in rate { pct = r.rate; }',
+'total = baseTotal - baseTotal * pct / 100;',
+'return total;'],
+why:'Nothing here matches a Performance Reviewer finding. It reads a Data Table, uses no Self URLData call and avoids commerce.transaction. Approve it.'}
+];
+const modQ=(m)=>({q:'Work order: "'+m[2]+'" Which Admin Home Page section holds '+m[0]+'?',a:m[1],w:sample(SECTIONS.filter((s)=>s!==m[1]),3),why:m[0]+' sits in the '+m[1]+' section of the Admin Home Page.'});
+const bq=(b)=>({q:b[0],a:b[1],w:b[2],why:b[3]});
+const mk=(q)=>({q:q.q,a:q.a,why:q.why,opts:shuffle([q.a].concat(q.w))});
+
+const HELP='https://help.bigmachines.com/BMIHelp/Content/';
+const SRC_ADMIN={t:'Administration Home Page',u:HELP+'Administration/Admin_Home_Page.htm'};
+const SRC_COM={t:'Commerce Process overview',u:HELP+'Commerce_Process/Commerce_Process_Overview.htm'};
+const SRC_20A={t:'Oracle CPQ 20A new features',u:'https://www.oracle.com/webfolder/technetwork/tutorials/tutorial/cloud/cpq/releases/20A/20A-cpq-wn.htm'};
+const SRC_25B={t:'CPQ Performance Reviewer (25B)',u:'https://docs.oracle.com/en/cloud/saas/readiness/sales/25b/scpq-25b/25B-cpq-wn-f37742.htm'};
+const SRC_IMP={t:'Implementation Report',u:HELP+'Performance/ImplementationReport.htm'};
+
+const ICONS={
+rush:'<path d="M5 4h14M8 4v6m4-6v9m4-9v6"/><path d="m9 16 3 3 3-3M4 21h16"/>',
+build:'<circle cx="5" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="18" r="2"/><path d="M6.6 7.4 10.4 10.6M13.6 13.4l3.8 3.2"/>',
+review:'<path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 5l-4 14"/>',
+boss:'<rect x="8" y="3" width="8" height="5" rx="2"/><path d="M5 10h14v6H5zM4 20h16"/>',
+final:'<path d="M12 3c3 2 5 5 5 9l-2 3H9l-2-3c0-4 2-7 5-9z"/><circle cx="12" cy="10" r="1.6"/><path d="M9 18l-1 3M15 18l1 3"/>'
+};
+const svgI=(k)=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[k]+'</svg>';
+const STAR='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z"/></svg>';
+const stars=(n,cls)=>'<span class="'+cls+'" role="img" aria-label="'+n+' of 3 stars">'+[0,1,2].map((i)=>STAR.replace('<svg','<svg class="'+(i<n?'on':'')+'"')).join('')+'</span>';
+
+const LEVELS=[
+{id:'rush',tag:'Arcade',title:'Quote Rush',blurb:'Work orders fall toward the floor. Route each one to the Admin Home Page section that holds it.',rules:[
+ 'Tap the section that holds the module, or press 1 to 8.',
+ 'The ticket glowing cyan is the one you route next. It is always the lowest.',
+ 'A wrong section, or a ticket hitting the floor, costs an approval. Three rejections end the run.',
+ 'Chain correct routes to climb volume tiers and multiply every ticket.'],
+ info:'16 tickets · 3 approvals',src:[SRC_ADMIN]},
+{id:'build',tag:'Sequence',title:'Pipeline Builder',blurb:'Assemble a Commerce process in the order an admin builds it, then ship it.',rules:[
+ 'Tap a step card to place it in the next slot of the pipeline.',
+ 'A step placed too early costs an approval.',
+ 'Hints highlight the next step for $250.'],
+ info:'10 steps · 3 approvals',src:[SRC_COM]},
+{id:'review',tag:'Code review',title:'Code Review',blurb:'Act as the Performance Reviewer. Flag the line that causes trouble, or approve clean code.',rules:[
+ 'Each sketch has at most one flagged line. Tap it.',
+ 'If the code is clean, press Approve as is.',
+ 'The sketches are illustrative. The rules behind them come from the 25B Performance Reviewer.'],
+ info:'5 reviews · 3 approvals',src:[SRC_25B]},
+{id:'boss',tag:'Boss battle',title:'The Rejection Stamp',blurb:'A giant stamp guards the release gate. Answer Commerce process questions to break it.',rules:[
+ 'Each right answer damages the stamp. Three right answers in a row land a critical hit.',
+ 'A wrong answer, or running out of the 20 second timer, costs an approval.',
+ 'Press 1 to 4 to answer, Enter for the next question.'],
+ info:'Boss HP 100 · 20 s per question',src:[SRC_COM]},
+{id:'final',tag:'Gauntlet',title:'Deploy Day',blurb:'Twelve mixed questions against the clock. Clear them to release to production.',rules:[
+ '18 seconds per question. Mixed topics from every level.',
+ 'Two lifelines, one use each: 50:50 and Skip.',
+ 'Clear it to earn your release certificate.'],
+ info:'12 questions · 18 s each · 2 lifelines',src:[SRC_ADMIN,SRC_COM,SRC_20A,SRC_25B]}
+];
+const BADGES=[
+['first','First approval','Clear any level'],
+['clean','Clean run','Clear a level with all 3 approvals'],
+['tier3','Tier 3','Chain 6 correct answers in a row'],
+['router','Speed router','Score $25,000 in Quote Rush'],
+['bug','Bug hunter','Clear Code Review with 3 approvals'],
+['stamp','Stamp breaker','Defeat the Rejection Stamp'],
+['ship','Release manager','Clear Deploy Day']
+];
+const CERT={rush:'Admin Home Page Navigator',build:'Commerce Process Builder',review:'Performance Reviewer',boss:'Rejection Stamp Breaker',final:'Release Manager'};
+const RANKS=[[0,'Sandbox user'],[12000,'Config admin'],[35000,'Commerce developer'],[70000,'CPQ architect']];
+
+/* ---------- state ---------- */
+let P={cleared:{},best:{},stars:{},badges:{},dates:{},name:'',mute:false};
+const dateStr=()=>new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+try{const raw=localStorage.getItem('cpq-quest-v2');if(raw){const o=JSON.parse(raw);if(o&&typeof o==='object')P=Object.assign(P,o);}}catch(e){}
+const save=()=>{try{localStorage.setItem('cpq-quest-v2',JSON.stringify(P));}catch(e){}};
+let S={screen:P.name?'hub':'welcome'};
+let RAF=0,TIMER=0;
+const app=$('#app');
+const total=()=>LEVELS.reduce((t,L)=>t+(P.best[L.id]||0),0);
+const mult=()=>S.streak>=6?2:(S.streak>=3?1.5:1);
+const stopLoops=()=>{cancelAnimationFrame(RAF);clearInterval(TIMER);RAF=0;TIMER=0;};
+
+/* ---------- sound and confetti ---------- */
+let AC=null;
+function tone(f,d,type,vol,delay){
+  if(P.mute)return;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended')AC.resume();
+    const o=AC.createOscillator(),g=AC.createGain(),t0=AC.currentTime+(delay||0);
+    o.type=type||'sine';o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(vol||0.06,t0+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
+    o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d+0.02);
+  }catch(e){}
+}
+const SFX={
+  ok(){tone(660,.09,'triangle',.07);tone(990,.12,'triangle',.06,.07);},
+  bad(){tone(180,.22,'sawtooth',.05);},
+  hit(){tone(130,.16,'square',.06);tone(90,.2,'square',.05,.05);},
+  win(){[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.07,i*.1));},
+  tick(){tone(880,.04,'square',.025);}
+};
+function confetti(){
+  const c=$('#fx');if(!c||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))return;
+  let ctx;try{ctx=c.getContext('2d');}catch(e){return;}
+  if(!ctx)return;
+  c.width=window.innerWidth;c.height=window.innerHeight;
+  const cols=['#46E0FF','#FFB52E','#FF4F8B','#3DDC97','#B48CFF'];
+  const ps=[];for(let i=0;i<150;i++)ps.push({x:c.width/2+(Math.random()-.5)*240,y:c.height*.38,vx:(Math.random()-.5)*11,vy:-Math.random()*12-3,r:Math.random()*6+3,c:cols[i%cols.length],a:Math.random()*6,va:(Math.random()-.5)*.4});
+  let f=0;
+  (function step(){
+    ctx.clearRect(0,0,c.width,c.height);f++;
+    ps.forEach((p)=>{p.vy+=.28;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.c;ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r);ctx.restore();});
+    if(f<170)requestAnimationFrame(step);else ctx.clearRect(0,0,c.width,c.height);
+  })();
+}
+
+/* ---------- shared pieces ---------- */
+const lifeHtml=()=>[0,1,2].map((k)=>'<span class="life'+(k<S.lives?'':' off')+'"></span>').join('');
+const tierName=()=>{const m=mult();return (m===1?'Tier 1':m===1.5?'Tier 2':'Tier 3')+' · '+m.toFixed(1)+'×';};
+function progText(){
+  const id=LEVELS[S.lvl].id;
+  if(id==='rush')return S.done+' / '+S.TOTAL;
+  if(id==='build')return S.placed.length+' / '+STEPS.length;
+  return (S.i+1)+' / '+S.items.length;
+}
+function hudHtml(){
+  const L=LEVELS[S.lvl];
+  return '<div class="hud"><div class="g"><span class="k">'+esc(L.title)+'</span><span class="v" id="h-prog">'+progText()+'</span></div>'+
+   '<div class="g"><span class="k">Approvals</span><span class="lives" id="h-lives" role="img" aria-label="'+S.lives+' of 3 approvals left">'+lifeHtml()+'</span></div>'+
+   '<div class="g"><span class="k">Volume tier</span><span class="v" id="h-tier">'+tierName()+'</span></div>'+
+   '<div class="g"><span class="k">Quote total</span><span class="v sc" id="h-score">'+fmt(S.score)+'</span></div>'+
+   '<button class="iconbtn quit" type="button" data-act="home">Quit</button></div>';
+}
+function updHud(){
+  const set=(id,h)=>{const e=document.getElementById(id);if(e)e.innerHTML=h;};
+  set('h-prog',progText());set('h-lives',lifeHtml());set('h-tier',tierName());set('h-score',fmt(S.score));
+}
+function award(base){S.streak++;if(S.streak>S.maxStreak)S.maxStreak=S.streak;S.correct++;const pts=Math.round(base*mult());S.score+=pts;return pts;}
+function strike(){S.streak=0;S.lives--;}
+const fbHtml=(kind,head,txt)=>'<div class="fb '+kind+'" role="status"><strong>'+head+'</strong>'+esc(txt)+'</div>';
+function bossSvg(cls){
+  return '<svg class="boss '+(cls||'')+'" viewBox="0 0 220 190" role="img" aria-label="The Rejection Stamp, a rubber stamp boss"><g class="bgrp">'+
+   '<rect x="82" y="4" width="56" height="30" rx="14" fill="#2D3C78"/><rect x="96" y="30" width="28" height="30" fill="#3E4F94"/>'+
+   '<path d="M50 58h120l14 72H36z" fill="#5666B3"/><rect x="26" y="128" width="168" height="36" rx="7" fill="#FF4F8B"/>'+
+   '<text x="110" y="152" text-anchor="middle" font-family="Unbounded,sans-serif" font-weight="800" font-size="17" fill="#FFFFFF" letter-spacing="1.5">REJECTED</text>'+
+   '<path d="M68 82l32 11-32 9z" fill="#FFB52E"/><path d="M152 82l-32 11 32 9z" fill="#FFB52E"/>'+
+   '<path d="M80 118q30-20 60 0" stroke="#0A0F1F" stroke-width="6" fill="none" stroke-linecap="round"/></g></svg>';
+}
+
+/* ---------- flow ---------- */
+function startLevel(i){
+  stopLoops();
+  const L=LEVELS[i];
+  S={screen:'play',lvl:i,intro:L.id!=='rush',lives:3,score:0,streak:0,maxStreak:0,correct:0,i:0,answered:null,removed:[],misses:[],tEnd:0,limit:0,
+     bossHp:100,bossAnim:'',lastDmg:0,lastCrit:false,bossDead:false,fifty:false,skip:false,over:false,flash:null,hintFor:null,seqDone:false,started:false};
+  if(L.id==='rush'){S.TOTAL=16;S.done=0;S.queue=sample(MODS,16);S.tickets=[];S.spawned=0;S.t=0;S.nextSpawn=.5;}
+  else if(L.id==='build'){S.order=shuffle(STEPS.map((t,k)=>k));S.placed=[];}
+  else if(L.id==='review'){S.items=shuffle(SNIPS);}
+  else if(L.id==='boss'){S.items=sample(BANK3,10).map(bq).map(mk);S.limit=20;}
+  else{S.items=shuffle(sample(MODS,3).map(modQ).concat(sample(BANK3,4).map(bq),sample(BANK4,5).map(bq))).map(mk);S.limit=18;}
+  render();window.scrollTo(0,0);
+}
+function checkBadges(pass){
+  const out=[];const give=(id)=>{if(!P.badges[id]){P.badges[id]=1;out.push(id);}};
+  const id=LEVELS[S.lvl].id;
+  if(pass){give('first');if(S.lives===3)give('clean');if(id==='review'&&S.lives===3)give('bug');if(id==='boss')give('stamp');if(id==='final')give('ship');}
+  if(S.maxStreak>=6)give('tier3');
+  if(id==='rush'&&S.score>=25000)give('router');
+  return out;
+}
+function finish(){
+  if(S.screen==='end')return;
+  stopLoops();
+  const L=LEVELS[S.lvl];
+  S.over=true;
+  let pass=S.lives>0;
+  if(L.id==='boss')pass=pass&&S.bossHp<=0;
+  S.pass=pass;S.prevBest=P.best[L.id]||0;
+  if(pass){P.cleared[L.id]=true;P.dates[L.id]=dateStr();if(S.lives>(P.stars[L.id]||0))P.stars[L.id]=S.lives;}
+  if(S.score>S.prevBest)P.best[L.id]=S.score;
+  S.newBadges=checkBadges(pass);
+  save();
+  S.screen='end';
+  render();window.scrollTo(0,0);
+  if(pass){SFX.win();if(L.id!=='rush'&&L.id!=='review')confetti();}
+}
+
+/* ---------- welcome ---------- */
+function renderWelcome(){
+  app.innerHTML='<section class="card intro"><span class="tag">Before you start</span><h2>Who is playing?</h2>'+
+    '<p>Your name goes on the certificate you earn at every stage. It stays in this browser.</p>'+
+    '<span class="k">Created by Prudhvi Raju V · Oracle ACE Associate</span>'+
+    '<div style="display:flex;flex-direction:column;gap:8px"><label class="k" for="wname">Your name</label>'+
+    '<input id="wname" class="nameinput" type="text" maxlength="40" placeholder="Your full name" value="'+esc(P.name||'')+'" autocomplete="name">'+
+    '<span class="k" id="werr" role="alert" style="color:var(--pink)"></span></div>'+
+    '<div class="row"><button class="btn" type="button" data-act="setname">'+(P.name?'Save name':'Start playing')+'</button>'+(P.name?'<button class="btn ghost" type="button" data-act="home">Cancel</button>':'')+'</div></section>';
+  setTimeout(()=>{const i=$('#wname');if(i)i.focus();},0);
+}
+
+/* ---------- hub ---------- */
+function renderHub(){
+  const tot=total();
+  let ri=0;RANKS.forEach((r,k)=>{if(tot>=r[0])ri=k;});
+  const nxt=RANKS[ri+1];
+  const pct=nxt?Math.min(100,Math.round((tot-RANKS[ri][0])/(nxt[0]-RANKS[ri][0])*100)):100;
+  const stages=LEVELS.map((L,i)=>{
+    const unlocked=i===0||P.cleared[LEVELS[i-1].id];const done=P.cleared[L.id];
+    const state=done?'done':(unlocked?'open':'locked');
+    const node=done?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>':String(i+1);
+    return '<li class="stage '+state+'"><div class="spine"><span class="node">'+node+'</span></div>'+
+     '<div class="scol"><button class="scard" type="button" data-act="open" data-i="'+i+'"'+(unlocked?'':' disabled')+'><span class="ico">'+svgI(L.id)+'</span>'+
+     '<span class="sbody"><span class="tag">'+esc(L.tag)+'</span><span class="st">'+esc(L.title)+'</span><span class="sd">'+esc(L.blurb)+'</span>'+
+     '<span class="meta">'+stars(P.stars[L.id]||0,'stars')+'<span>Best '+(P.best[L.id]?fmt(P.best[L.id]):'—')+'</span><span>'+esc(L.info)+'</span></span></span></button>'+
+     (done?'<button class="btn ghost small" type="button" data-act="cert" data-i="'+i+'">View certificate: '+esc(CERT[L.id])+'</button>':'')+'</div></li>';
+  }).join('');
+  const badges=BADGES.map((b)=>'<div class="bd'+(P.badges[b[0]]?' on':'')+'"><b>'+esc(b[1])+'</b><span>'+esc(b[2])+'</span></div>').join('');
+  app.innerHTML='<section class="panel profile"><div><span class="k">'+esc(P.name||'Player')+' · <button class="linkbtn" type="button" data-act="rename">change name</button></span><h2 class="rank">'+RANKS[ri][1]+'</h2><div class="xp"><i style="width:'+pct+'%"></i></div>'+
+    '<span class="k">'+(nxt?fmt(tot)+' of '+fmt(nxt[0])+' to '+nxt[1]:'Top rank reached')+'</span></div>'+
+    '<div class="pr"><span class="k">Quote total</span><span class="big">'+fmt(tot)+'</span></div></section>'+
+    '<ol class="route" aria-label="Five stages">'+stages+'</ol>'+
+    '<section class="panel"><h3>Badges</h3><div class="bgrid">'+badges+'</div></section>';
+}
+
+/* ---------- intro ---------- */
+function renderIntro(){
+  const L=LEVELS[S.lvl];
+  app.innerHTML='<section class="card intro"><span class="tag">'+esc(L.tag)+'</span><h2>'+esc(L.title)+'</h2><p>'+esc(L.blurb)+'</p>'+
+    (L.id==='boss'?'<div style="max-width:180px">'+bossSvg('')+'</div>':'')+
+    '<ul class="rules">'+L.rules.map((r)=>'<li>'+esc(r)+'</li>').join('')+'</ul>'+
+    '<div class="row"><button class="btn" type="button" data-act="begin">Start</button><button class="btn ghost" type="button" data-act="home">Back</button></div></section>';
+}
+
+/* ---------- level 1: Quote Rush ---------- */
+const TH=84,FH=340,FLOOR=22,LANES=['2%','34.5%','67%'];
+function renderRush(){
+  const bins=SECTIONS.map((s,k)=>'<button class="bin" type="button" data-act="bin" data-i="'+k+'" id="bin'+k+'" style="--c:'+SEC_COL[k]+'"><span class="bn">'+(k+1)+'</span><span>'+esc(s)+'</span></button>').join('');
+  app.innerHTML=hudHtml()+
+   '<div class="field" id="field"><div class="floor"><span>Floor · unrouted tickets cost an approval</span></div>'+
+   (S.started?'':'<div class="overlay" id="ov"><div class="card"><span class="tag">'+esc(LEVELS[0].tag)+'</span><h2 style="font-size:1.5rem">'+esc(LEVELS[0].title)+'</h2><ul class="rules">'+LEVELS[0].rules.map((r)=>'<li>'+esc(r)+'</li>').join('')+'</ul><div class="row"><button class="btn" type="button" data-act="rushstart">Start the shift</button><button class="btn ghost" type="button" data-act="home">Back</button></div></div></div>')+
+   '</div><div class="toast" id="toast" role="status">Route the glowing ticket. Keys 1 to 8 also work.</div><div class="bins">'+bins+'</div>';
+  S.field=$('#field');
+}
+function toast(msg,kind){const t=$('#toast');if(t){t.textContent=msg;t.className='toast '+(kind||'');}}
+function floater(txt,t){
+  if(!S.field)return;const f=document.createElement('div');f.className='floater';f.textContent=txt;
+  f.style.left='calc('+LANES[t.lane]+' + 8px)';f.style.top=Math.max(0,t.y)+'px';S.field.appendChild(f);setTimeout(()=>f.remove(),950);
+}
+function lowest(){let b=null;S.tickets.forEach((t)=>{if(!b||t.y>b.y)b=t;});return b;}
+function spawn(){
+  const m=S.queue[S.spawned];if(!m)return false;
+  const busy=[false,false,false];S.tickets.forEach((t)=>{if(t.y<TH+12)busy[t.lane]=true;});
+  const free=[0,1,2].filter((l)=>!busy[l]);if(!free.length)return false;
+  const lane=free[Math.floor(Math.random()*free.length)];
+  const el=document.createElement('div');el.className='ticket';el.style.left=LANES[lane];
+  el.innerHTML='<b>'+esc(m[0])+'</b><span>'+esc(m[2])+'</span>';
+  el.style.transform='translateY('+(-TH)+'px)';S.field.appendChild(el);
+  S.tickets.push({m:m,lane:lane,y:-TH,el:el,ans:SECTIONS.indexOf(m[1])});S.spawned++;return true;
+}
+function flashBin(k){const b=document.getElementById('bin'+k);if(b){b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash');}}
+function rushLoop(ts){
+  if(S.over)return;
+  if(!S.last)S.last=ts;
+  const dt=Math.min(.05,(ts-S.last)/1000);S.last=ts;S.t+=dt;
+  if(S.spawned<S.TOTAL&&S.t>=S.nextSpawn&&S.tickets.length<3){if(spawn())S.nextSpawn=S.t+Math.max(1.5,3.2-.1*S.spawned);}
+  const speed=Math.min(125,44+4.5*S.spawned);
+  const maxY=FH-TH-FLOOR;
+  const hits=[];
+  S.tickets.forEach((t)=>{t.y+=speed*dt;t.el.style.transform='translateY('+t.y+'px)';if(t.y>=maxY)hits.push(t);});
+  hits.forEach((t)=>{
+    S.tickets.splice(S.tickets.indexOf(t),1);strike();S.done++;
+    S.misses.push({q:t.m[0],a:t.m[1]});
+    toast('Hit the floor: '+t.m[0]+' belongs in '+t.m[1]+'.','bad');SFX.bad();flashBin(t.ans);
+    t.el.classList.add('bad');setTimeout(()=>t.el.remove(),380);
+  });
+  if(hits.length){updHud();if(S.lives<=0){finish();return;}}
+  const low=lowest();S.tickets.forEach((t)=>t.el.classList.toggle('target',t===low));
+  if(S.spawned>=S.TOTAL&&!S.tickets.length){finish();return;}
+  RAF=requestAnimationFrame(rushLoop);
+}
+
+/* ---------- level 2: Pipeline Builder ---------- */
+function renderBuild(){
+  const nodes=STEPS.map((t,i)=>{const on=i<S.placed.length;return '<li class="pn'+(on?' on':'')+'"><span class="pdot">'+(i+1)+'</span><span>'+(on?esc(STEPS[S.placed[i]]):'Step '+(i+1))+'</span></li>';}).join('');
+  const pool=S.order.filter((id)=>S.placed.indexOf(id)<0).map((id)=>'<button class="chipbtn'+(S.hintFor===S.placed.length&&id===S.placed.length?' hint':'')+(S.flash===id?' shake':'')+'" type="button" data-act="seq" data-i="'+id+'">'+esc(STEPS[id])+'</button>').join('');
+  const side=S.seqDone
+    ?'<div class="stamp">DEPLOYED</div>'+fbHtml('good','Process deployed.','Every step in order. Steps, Process Actions and Data Columns need a main document first, and nothing reaches production until you deploy.')+'<div class="row end"><button class="btn" type="button" data-act="finish">See result</button></div>'
+    :'<div class="pool">'+pool+'</div>'+(S.msg?fbHtml('bad','Approval rejected.',S.msg):'')+'<div class="row"><button class="btn ghost" type="button" data-act="hint">Highlight the next step (−$250)</button></div>';
+  app.innerHTML=hudHtml()+'<section class="card"><span class="tag">'+esc(LEVELS[1].tag)+'</span><h2 class="q">Place the steps in the order an admin performs them.</h2>'+
+    '<div class="build"><ol class="pipe">'+nodes+'</ol><div class="pool" style="gap:12px">'+side+'</div></div></section>';
+}
+
+/* ---------- level 3: Code Review ---------- */
+function renderReview(){
+  const sn=S.items[S.i],ans=S.answered;
+  const lines=sn.lines.map((ln,k)=>{
+    let cls='cl'+(ln.trim().indexOf('//')===0?' cmt':'');
+    if(ans!==null){if(k===sn.bad)cls+=' flag';if(k===ans&&k!==sn.bad)cls+=' wrong';}
+    return '<button class="'+cls+'" type="button" data-act="cline" data-i="'+k+'"'+(ans!==null?' disabled':'')+'><span class="ln">'+(k+1)+'</span><code>'+esc(ln)+'</code></button>';
+  }).join('');
+  let fb='',acts='';
+  if(ans!==null){
+    const ok=ans===sn.bad;
+    fb=fbHtml(ok?'good':'bad',ok?'Review passed.':'Approval rejected.',sn.why);
+    const last=S.lives<=0||S.i>=S.items.length-1;
+    acts='<div class="row end"><button class="btn" type="button" data-act="next">'+(last?'See result':'Next review')+'</button></div>';
+  }else{
+    acts='<div class="row"><button class="btn ghost" type="button" data-act="cline" data-i="-1">Approve as is</button></div>';
+  }
+  app.innerHTML=hudHtml()+'<section class="card"><span class="tag">'+esc(LEVELS[2].tag)+'</span><h2 class="q">Which line would the Performance Reviewer flag?</h2><span class="ctx">'+esc(sn.ctx)+'</span>'+
+    '<div class="code"><div class="codein">'+lines+'</div></div>'+fb+acts+'</section>';
+}
+
+/* ---------- levels 4 and 5: timed questions ---------- */
+function startTimer(){
+  clearInterval(TIMER);
+  if(!S.tEnd)S.tEnd=Date.now()+S.limit*1000;
+  const bar=document.getElementById('tbar'),num=document.getElementById('tnum');
+  let lastSec=-1;
+  const tick=()=>{
+    const rem=Math.max(0,S.tEnd-Date.now()),f=rem/(S.limit*1000),sec=Math.ceil(rem/1000);
+    if(bar){bar.style.transform='scaleX('+f+')';bar.className=f<.3?'low':'';}
+    if(num)num.textContent=sec+'s';
+    if(sec<=3&&sec!==lastSec&&sec>0){SFX.tick();}
+    lastSec=sec;
+    if(rem<=0){clearInterval(TIMER);ACT.timeout();}
+  };
+  tick();TIMER=setInterval(tick,100);
+}
+function renderQ(){
+  const L=LEVELS[S.lvl],boss=L.id==='boss',it=S.items[S.i],ans=S.answered;
+  let top='';
+  if(boss){
+    top='<div class="bosspanel">'+bossSvg(S.bossAnim)+'<div style="display:flex;flex-direction:column;gap:8px;min-width:0"><span class="k">The Rejection Stamp · HP '+S.bossHp+' / 100</span><div class="hp"><i style="width:'+S.bossHp+'%"></i></div>'+
+      '<span class="k">'+(S.streak>=3?'Critical streak: next hit deals 20':'Normal hit deals 14')+'</span></div>'+(S.lastDmg?'<span class="dmg'+(S.lastCrit?' crit':'')+'">−'+S.lastDmg+'</span>':'')+'</div>';
+  }
+  const opts=it.opts.map((o,k)=>{
+    if(S.removed.indexOf(k)>-1)return '';
+    let cls='opt';
+    if(ans!==null){if(o===it.a)cls+=' correct';else if(k===ans)cls+=' wrong';}
+    return '<button class="'+cls+'" type="button" data-act="pick" data-i="'+k+'"'+(ans!==null?' disabled':'')+'><span class="ltr">'+(k+1)+'</span><span>'+esc(o)+'</span></button>';
+  }).join('');
+  let fb='',acts='';
+  if(ans!==null){
+    const ok=ans>=0&&it.opts[ans]===it.a;
+    fb=fbHtml(ok?'good':'bad',ok?'Approved.':(ans===-1?'Time is up.':'Approval rejected.'),it.why);
+    const last=S.lives<=0||S.i>=S.items.length-1||S.bossDead;
+    acts='<div class="row end"><button class="btn" type="button" data-act="next">'+(last?'See result':'Next question')+'</button></div>';
+  }else if(!boss){
+    acts='<div class="row"><button class="btn ghost" type="button" data-act="fifty"'+(S.fifty?' disabled':'')+'>50:50</button><button class="btn ghost" type="button" data-act="skip"'+(S.skip?' disabled':'')+'>Skip</button></div>';
+  }
+  app.innerHTML=hudHtml()+'<section class="card" id="qcard">'+top+
+    '<div><div class="trow"><span class="k">Question '+(S.i+1)+' of '+S.items.length+'</span><span class="k" id="tnum"></span></div><div class="timer"><i id="tbar"></i></div></div>'+
+    '<h2 class="q">'+esc(it.q)+'</h2><div class="opts">'+opts+'</div>'+fb+acts+'</section>';
+  if(ans===null)startTimer();else clearInterval(TIMER);
+}
+
+/* ---------- certificates ---------- */
+function certHtml(i,score,st,date){
+  const L=LEVELS[i];
+  return '<div class="cert"><span class="k">CPQ Quest · Certificate of completion</span><h3>'+esc(CERT[L.id])+'</h3>'+
+    '<span class="k">This certifies that</span><div class="nm" id="certname">'+esc(P.name||'Your name here')+'</div>'+
+    '<span class="k">cleared '+esc(L.title)+' with '+fmt(score)+'</span>'+stars(st,'stars')+'<span class="k">'+esc(date)+'</span><span class="k" style="color:var(--amber)">Issued by Prudhvi Raju V · Oracle ACE Associate</span>'+
+    '<label class="k" for="pname">Type your name to put it on every certificate</label>'+
+    '<input id="pname" type="text" maxlength="40" placeholder="Your full name" value="'+esc(P.name||'')+'" autocomplete="name">'+
+    '<div class="row" style="justify-content:center"><button class="btn ghost" type="button" data-act="copycert" data-i="'+i+'" id="copyb">Copy as text</button></div></div>';
+}
+function renderCert(){
+  const i=S.lvl,L=LEVELS[i];
+  app.innerHTML='<section class="card"><span class="tag">'+esc(L.title)+'</span>'+certHtml(i,P.best[L.id]||0,P.stars[L.id]||0,P.dates[L.id]||dateStr())+
+    '<div class="row"><button class="btn ghost" type="button" data-act="home">Route map</button></div></section>';
+}
+
+/* ---------- result ---------- */
+function renderEnd(){
+  const L=LEVELS[S.lvl];
+  const nTotal=L.id==='rush'?S.TOTAL:(L.id==='build'?STEPS.length:S.items.length);
+  const next=S.pass&&S.lvl<LEVELS.length-1;
+  let title,msg;
+  if(S.pass){title=L.id==='final'?'Released to production.':(L.id==='boss'?'The stamp is broken.':'Stage cleared.');msg='You kept '+S.lives+' of 3 approvals.';}
+  else{title=L.id==='boss'&&S.lives>0?'The stamp survives.':'Sent back for rework.';msg=S.lives>0?'You ran out of questions before the boss fell. Try again.':'All three approvals were rejected. Replay and the questions reshuffle.';}
+  const src=L.src.map((s)=>'<li><a href="'+s.u+'" target="_blank" rel="noopener">'+esc(s.t)+'</a></li>').join('');
+  const seen={};const miss=S.misses.filter((m)=>{if(seen[m.q])return false;seen[m.q]=1;return true;}).slice(0,8)
+    .map((m)=>'<li>'+esc(m.q)+' <span>→ '+esc(m.a)+'</span></li>').join('');
+  const nb=(S.newBadges||[]).map((id)=>{const b=BADGES.filter((x)=>x[0]===id)[0];return '<div class="newb">New badge: <b>'+esc(b[1])+'</b>. '+esc(b[2])+'.</div>';}).join('');
+  const cert=S.pass?certHtml(S.lvl,S.score,S.lives,dateStr()):'';
+  app.innerHTML='<section class="card"><span class="tag">'+esc(L.title)+'</span><h2 class="endt">'+title+'</h2>'+
+    (S.pass?stars(S.lives,'big-stars'):'')+
+    '<p style="color:var(--muted)">'+msg+'</p>'+nb+cert+
+    '<div class="stats"><div class="stat"><span class="k">This run</span><span class="v">'+fmt(S.score)+'</span></div><div class="stat"><span class="k">Best</span><span class="v">'+fmt(P.best[L.id]||0)+'</span></div>'+
+    '<div class="stat"><span class="k">Correct</span><span class="v">'+S.correct+' / '+nTotal+'</span></div><div class="stat"><span class="k">Quote total</span><span class="v">'+fmt(total())+'</span></div></div>'+
+    (miss?'<div><div class="k" style="margin-bottom:6px">Study list: what you missed</div><ul class="list">'+miss+'</ul></div>':'')+
+    '<div><div class="k" style="margin-bottom:6px">Review these help topics</div><ul class="list">'+src+'</ul></div>'+
+    '<div class="row">'+(next?'<button class="btn" type="button" data-act="open" data-i="'+(S.lvl+1)+'">Next stage</button>':'')+
+    '<button class="btn'+(next?' ghost':'')+'" type="button" data-act="open" data-i="'+S.lvl+'">Replay</button><span class="grow"></span><button class="btn ghost" type="button" data-act="home">Route map</button></div></section>';
+}
+
+function render(){
+  stopLoops();
+  if(S.screen==='welcome')renderWelcome();
+  else if(S.screen==='hub')renderHub();
+  else if(S.screen==='end')renderEnd();
+  else if(S.screen==='cert')renderCert();
+  else if(S.intro)renderIntro();
+  else{
+    const id=LEVELS[S.lvl].id;
+    if(id==='rush'){renderRush();if(S.started){S.last=0;RAF=requestAnimationFrame(rushLoop);}}
+    else if(id==='build')renderBuild();
+    else if(id==='review')renderReview();
+    else renderQ();
+  }
+}
+
+/* ---------- actions ---------- */
+const ACT={
+  open(d){startLevel(+d.i);},
+  home(){stopLoops();S={screen:'hub'};render();window.scrollTo(0,0);},
+  begin(){S.intro=false;render();},
+  mute(){P.mute=!P.mute;save();syncSound();},
+  rename(){stopLoops();S={screen:'welcome'};render();},
+  setname(){
+    const el=$('#wname');const v=el?el.value.trim().replace(/\s+/g,' '):'';
+    if(!v){const er=$('#werr');if(er)er.textContent='Please enter your name to continue.';if(el)el.focus();return;}
+    P.name=v.slice(0,40);save();S={screen:'hub'};render();window.scrollTo(0,0);
+  },
+  cert(d){stopLoops();S={screen:'cert',lvl:+d.i};render();window.scrollTo(0,0);},
+  copycert(d){
+    const L=LEVELS[+d.i],b=$('#copyb');
+    const txt=(P.name||'A CPQ admin')+' earned the "'+CERT[L.id]+'" certificate in CPQ Quest by clearing '+L.title+' on '+(P.dates[L.id]||dateStr())+'.';
+    const done=(m)=>{if(b)b.textContent=m;};
+    try{navigator.clipboard.writeText(txt).then(()=>done('Copied'),()=>done('Copy blocked, select the name instead'));}catch(e){done('Copy blocked, select the name instead');}
+  },
+  rushstart(){
+    S.started=true;S.last=0;const ov=$('#ov');if(ov)ov.remove();
+    tone(440,.08,'triangle',.05);RAF=requestAnimationFrame(rushLoop);
+  },
+  bin(d){
+    if(S.screen!=='play'||LEVELS[S.lvl].id!=='rush'||!S.started||S.over)return;
+    const t=lowest();if(!t)return;
+    S.tickets.splice(S.tickets.indexOf(t),1);S.done++;
+    const k=+d.i;
+    if(t.ans===k){
+      const frac=Math.max(0,1-t.y/(FH-TH-FLOOR));
+      const pts=award(1000+Math.round(500*frac));
+      toast('Routed: '+t.m[0]+' lives in '+t.m[1]+'. +'+fmt(pts),'good');floater('+'+fmt(pts),t);SFX.ok();t.el.classList.add('ok');
+    }else{
+      strike();S.misses.push({q:t.m[0],a:t.m[1]});
+      toast('Wrong section. '+t.m[0]+' belongs in '+t.m[1]+'.','bad');SFX.bad();flashBin(t.ans);t.el.classList.add('bad');
+    }
+    setTimeout(()=>t.el.remove(),380);
+    updHud();
+    if(S.lives<=0)finish();
+  },
+  seq(d){
+    const id=+d.i;
+    if(id===S.placed.length){
+      S.placed.push(id);award(500);S.msg='';S.flash=null;SFX.ok();
+      if(S.placed.length===STEPS.length){S.seqDone=true;SFX.win();confetti();}
+      render();
+    }else{
+      strike();S.flash=id;SFX.bad();
+      S.msg='That step comes later. Think about what each step depends on.';
+      if(S.lives<=0){finish();return;}
+      render();
+    }
+  },
+  hint(){
+    if(S.hintFor===S.placed.length||S.seqDone)return;
+    S.hintFor=S.placed.length;S.score=Math.max(0,S.score-250);render();
+  },
+  cline(d){
+    if(S.answered!==null)return;
+    const sn=S.items[S.i],k=+d.i;S.answered=k;
+    if(k===sn.bad){award(1500);SFX.ok();}
+    else{strike();SFX.bad();S.misses.push({q:'Review: '+sn.ctx,a:sn.bad===-1?'No finding, approve it':'Line '+(sn.bad+1)+' is the flagged one'});}
+    render();
+  },
+  pick(d){
+    if(S.answered!==null||S.screen!=='play')return;
+    const L=LEVELS[S.lvl],it=S.items[S.i],k=+d.i;
+    clearInterval(TIMER);S.answered=k;S.bossAnim='';S.lastDmg=0;
+    const ok=it.opts[k]===it.a;
+    if(ok){
+      award(L.id==='boss'?1500:1200);SFX.ok();
+      if(L.id==='boss'){
+        const crit=S.streak>=3,dmg=crit?20:14;
+        S.bossHp=Math.max(0,S.bossHp-dmg);S.lastDmg=dmg;S.lastCrit=crit;S.bossAnim='hit';SFX.hit();
+        if(S.bossHp<=0){S.bossDead=true;S.bossAnim='dead';}
+      }
+    }else{
+      strike();SFX.bad();S.misses.push({q:it.q,a:it.a});
+      if(L.id==='boss'){S.bossAnim='lunge';SFX.hit();}
+    }
+    render();
+    if(!ok){const c=$('#qcard');if(c){c.classList.add('shake');}}
+  },
+  timeout(){
+    if(S.answered!==null||S.screen!=='play')return;
+    const it=S.items[S.i];
+    S.answered=-1;S.bossAnim='';S.lastDmg=0;strike();SFX.bad();S.misses.push({q:it.q,a:it.a});
+    if(LEVELS[S.lvl].id==='boss')S.bossAnim='lunge';
+    render();
+  },
+  fifty(){
+    if(S.fifty||S.answered!==null)return;
+    const it=S.items[S.i];const wrong=[];it.opts.forEach((o,k)=>{if(o!==it.a)wrong.push(k);});
+    S.removed=sample(wrong,2);S.fifty=true;render();
+  },
+  skip(){
+    if(S.skip||S.answered!==null)return;
+    S.skip=true;
+    if(S.i>=S.items.length-1){finish();return;}
+    S.i++;S.removed=[];S.tEnd=0;render();
+  },
+  next(){
+    const last=S.lives<=0||S.i>=S.items.length-1||S.bossDead;
+    if(last){finish();return;}
+    S.i++;S.answered=null;S.removed=[];S.tEnd=0;S.bossAnim='';S.lastDmg=0;render();
+  },
+  finish(){finish();},
+  reset(){P={cleared:{},best:{},stars:{},badges:{},dates:{},name:'',mute:P.mute};save();S={screen:'welcome'};render();window.scrollTo(0,0);}
+};
+function syncSound(){const b=$('#snd');if(b)b.textContent=P.mute?'Sound off':'Sound on';}
+document.addEventListener('click',(e)=>{
+  const b=e.target.closest('[data-act]');
+  if(!b||b.disabled)return;
+  const fn=ACT[b.getAttribute('data-act')];
+  if(fn)fn({i:b.getAttribute('data-i')});
+});
+document.addEventListener('input',(e)=>{
+  if(e.target&&e.target.id==='pname'){P.name=e.target.value.slice(0,40);save();const n=$('#certname');if(n)n.textContent=P.name||'Your name here';}
+});
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='Enter'&&e.target&&e.target.id==='wname'){e.preventDefault();ACT.setname();return;}
+  if(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;
+  if(S.screen!=='play'||S.intro)return;
+  const id=LEVELS[S.lvl].id,k=e.key;
+  if(id==='rush'){if(/^[1-8]$/.test(k))ACT.bin({i:+k-1});}
+  else if(id==='boss'||id==='final'){
+    if(S.answered===null&&/^[1-4]$/.test(k)){const idx=+k-1;if(idx<S.items[S.i].opts.length&&S.removed.indexOf(idx)<0)ACT.pick({i:idx});}
+    else if(S.answered!==null&&k==='Enter'&&e.target.tagName!=='BUTTON'){e.preventDefault();ACT.next();}
+  }
+});
+$('#foot').innerHTML='<span><b>CPQ Quest</b> created by Prudhvi Raju V, Oracle ACE Associate.</span><span>Built from the <a href="https://help.bigmachines.com/cpq" target="_blank" rel="noopener">Oracle CPQ help center</a> and Oracle CPQ release notes. Unofficial study game, not affiliated with Oracle. Some answers are tied to a release, so check the help center for current behavior. Code Review sketches are illustrative, not production syntax.</span><button type="button" data-act="reset">Reset progress</button>';
+syncSound();
+render();
+})();
+</script>
+
+</body></html>
